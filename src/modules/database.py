@@ -1,8 +1,6 @@
 # pylint: disable=redefined-builtin
-# pylint: disable=too-many-arguments, too-many-positional-arguments
 from config import db
-from tests import db_helper
-from entities.reference import Reference, Article, Book, Inproceedings, Manual
+from entities.reference import Article, Book, Inproceedings, Manual
 
 def add_reference(ref):
     return ref.insert(db)
@@ -14,16 +12,16 @@ def delete_reference(ref):
     return ref.delete(db)
 
 def get_all_articles():
-    return Reference.get_all(db, Article)
+    return Article().get_all(db)
 
 def get_all_books():
-    return Reference.get_all(db, Book)
+    return Book().get_all(db)
 
 def get_all_inproceedings():
-    return Reference.get_all(db, Inproceedings)
+    return Inproceedings().get_all(db)
 
 def get_all_manuals():
-    return Reference.get_all(db, Manual)
+    return Manual().get_all(db)
 
 def get_all_references():
     return [
@@ -33,38 +31,28 @@ def get_all_references():
         *get_all_manuals(),
     ]
 
-def article_from_id(id):
-    return Reference.from_id(db, id, Article)
-
-def book_from_id(id):
-    return Reference.from_id(db, id, Book)
-
-def inproceedings_from_id(id):
-    return Reference.from_id(db, id, Inproceedings)
-
-def manual_from_id(id):
-    return Reference.from_id(db, id, Manual)
-
 def ref_from_id(ref_type, id):
     match ref_type:
-        case "article":
-            return article_from_id(id)
-        case "book":
-            return book_from_id(id)
-        case "inproceedings":
-            return inproceedings_from_id(id)
-        case "manual":
-            return manual_from_id(id)
+        case Article.type:
+            ref = Article
+        case Book.type:
+            ref = Book
+        case Inproceedings.type:
+            ref = Inproceedings
+        case Manual.type:
+            ref = Manual
 
         case _:
             return None
 
+    return ref(id=id).from_id(db)
+
 def search_result(query):
     return [
-        *Reference.get_like(db, query, Article),
-        *Reference.get_like(db, query, Book),
-        *Reference.get_like(db, query, Inproceedings),
-        *Reference.get_like(db, query, Manual),
+        *Article().get_like(db, query),
+        *Book().get_like(db, query),
+        *Inproceedings().get_like(db, query),
+        *Manual().get_like(db, query),
     ]
 
 def order_references(order):
@@ -79,19 +67,15 @@ def order_references(order):
             return order_references("author_a_to_z")[::-1]
 
         case _:
-            return []
-
-
-def reset_db():
-    db_helper.reset_db()
+            return get_all_references()
 
 def advanced_search_result(field, query):
     if field == "all_fields":
         return search_result(query)
 
     return [
-        *Reference.get_by_field(db, field, query, Article),
-        *Reference.get_by_field(db, field, query, Book),
-        *Reference.get_by_field(db, field, query, Inproceedings),
-        *Reference.get_by_field(db, field, query, Manual),
+        *Article().get_by_field(db, field, query),
+        *Book().get_by_field(db, field, query),
+        *Inproceedings().get_by_field(db, field, query),
+        *Manual().get_by_field(db, field, query),
     ]

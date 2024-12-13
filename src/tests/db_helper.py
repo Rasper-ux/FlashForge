@@ -3,7 +3,7 @@ from sqlalchemy import text
 
 def reset_db():
     print("""Reseting all tables!""")
-    with open('reset.sql', 'r', encoding='utf-8') as file:
+    with open('sql/reset.sql', 'r', encoding='utf-8') as file:
         sql = text(file.read())
         res = db.session.execute(sql)
         if res:
@@ -13,7 +13,7 @@ def reset_db():
 
 def drop_tables():
     print("""Dropping all tables!""")
-    with open('drop.sql', 'r', encoding='utf-8') as file:
+    with open('sql/drop.sql', 'r', encoding='utf-8') as file:
         sql = text(file.read())
         res = db.session.execute(sql)
         if res:
@@ -23,7 +23,7 @@ def drop_tables():
 
 def create_tables():
     print("""Creating all tables!""")
-    with open('schema.sql', 'r', encoding='utf-8') as file:
+    with open('sql/schema.sql', 'r', encoding='utf-8') as file:
         sql = text(file.read())
         res = db.session.execute(sql)
         if res:

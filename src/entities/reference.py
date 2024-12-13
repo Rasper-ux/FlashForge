@@ -1,8 +1,8 @@
-# pylint: disable=bare-except, redefined-builtin, use-a-generator, multiple-statements, consider-iterating-dictionary
+# pylint: disable=bare-except, redefined-builtin
 from sqlalchemy import text
 
 class Reference:
-    """Class for references"""
+    """Default class for references"""
     type     = "generic_reference"
     table    = ""
     required = []
@@ -11,24 +11,29 @@ class Reference:
     id       = None
     fields   = {}
 
-    def validate(self):
-        required_fields = all([
-            required in self.fields.keys()
-            for required in self.required
-        ])
+    def __init__(self, id=None, **kwargs):
+        self.id     = id
+        self.fields = { **kwargs }
 
-        def canbe(type, field):
+    def validate(self):
+        required_fields = all(
+            required in self.fields
+            for required in self.required
+        )
+
+        def can_convert_to(type, field):
             try:
-                if field: type(field)
-                return True
+                if field and type(field):
+                    pass
             except ValueError:
                 return False
+            return True
 
-        typed_fields = all([
-            canbe(self.special[key], val)
+        typed_fields = all(
+            can_convert_to(self.special[key], val)
             for key, val in self.fields.items()
-            if key in self.special.keys()
-        ])
+            if key in self.special
+        )
 
         return required_fields and typed_fields
 
@@ -37,70 +42,58 @@ class Reference:
         populated = {key: val or None for key, val in self.fields.items()}
         return {**default, **populated}
 
-    # pylint: disable=no-self-argument
-    def from_id(db, id, cls):
+    def from_id(self, db):
         sql = f"""
-            SELECT * FROM {cls.table} WHERE id = :id
+            SELECT * FROM {self.table} WHERE id = :id
         """
 
-        print(id, sql)
-
         try:
-            # pylint: disable=no-member
-            res = db.session.execute(text(sql), { "id": id })
+            res = db.session.execute(text(sql), { "id": self.id })
         except:
-            return cls()
+            return self.__class__()
 
         row = res.fetchone()
-        return cls(**row._asdict()) if row else cls()
+        return self.__class__(**row._asdict()) if row else None
 
-    # pylint: disable=no-self-argument
-    def get_all(db, cls):
+    def get_all(self, db):
         sql = f"""
-            SELECT * FROM {cls.table}
+            SELECT * FROM {self.table}
         """
 
         try:
-            # pylint: disable=no-member
             res = db.session.execute(text(sql))
         except:
             return []
 
-        return [cls(**row._asdict()) for row in res.fetchall()]
+        return [self.__class__(**row._asdict()) for row in res.fetchall()]
 
-    # pylint: disable=no-self-argument
-    def get_like(db, query, cls):
-        fields = [f"CAST({key} AS TEXT) ILIKE :query" for key in cls.required + cls.optional]
+    def get_like(self, db, query):
+        fields = [f"CAST({key} AS TEXT) ILIKE :query" for key in self.required + self.optional]
         sql = f"""
             SELECT *
-            FROM {cls.table}
+            FROM {self.table}
             WHERE {" OR ".join(fields)}
         """
 
         try:
-            # pylint: disable=no-member
             res = db.session.execute(text(sql), {"query": f"%{query}%"})
-            return [cls(**row._asdict()) for row in res.fetchall()]
+            return [self.__class__(**row._asdict()) for row in res.fetchall()]
         except:
-            # pylint: disable=no-member
             db.session.rollback()
             return []
 
 
-    # pylint: disable=no-self-argument
-    def get_by_field(db, field, query, cls):
+    def get_by_field(self, db, field, query):
         sql = f"""
             SELECT *
-            FROM {cls.table}
+            FROM {self.table}
             WHERE CAST({field} AS TEXT) ILIKE :query
         """
 
         try:
-            # pylint: disable=no-member
             res = db.session.execute(text(sql), {"query": f"%{query}%"})
-            return [cls(**row._asdict()) for row in res.fetchall()]
+            return [self.__class__(**row._asdict()) for row in res.fetchall()]
         except:
-            # pylint: disable=no-member
             db.session.rollback()
             return []
 
@@ -110,8 +103,6 @@ class Reference:
         sql = f"""
             INSERT INTO {self.table} ({", ".join(fields)}) VALUES ({", ".join([f":{key}" for key in fields])})
         """
-
-        print(sql, details)
 
         try:
             db.session.execute(text(sql), details)
@@ -166,10 +157,6 @@ class Article(Reference):
     optional = ["volume", "number", "pages", "month", "note"]
     special  = { "year": int, "volume": int, "number": int }
 
-    def __init__(self, id=None, **kwargs):
-        self.id     = id
-        self.fields = { **kwargs }
-
 class Book(Reference):
     """Class for book references"""
     type     = "book"
@@ -177,10 +164,6 @@ class Book(Reference):
     required = ["author", "title", "publisher", "year", "address"]
     optional = []
     special  = { "year": int }
-
-    def __init__(self, id=None, **kwargs):
-        self.id     = id
-        self.fields = { **kwargs }
 
 class Inproceedings(Reference):
     """Class for inproceedings references"""
@@ -191,10 +174,6 @@ class Inproceedings(Reference):
                 "month", "organization", "publisher"]
     special  = { "year": int, "volume": int, "number": int }
 
-    def __init__(self, id=None, **kwargs):
-        self.id     = id
-        self.fields = { **kwargs }
-
 class Manual(Reference):
     """Class for manuals references"""
     type     = "manual"
@@ -202,7 +181,3 @@ class Manual(Reference):
     required = ["title", "year"]
     optional = ["author", "organization", "address", "edition", "month", "note"]
     special  = { "year": int }
-
-    def __init__(self, id=None, **kwargs):
-        self.id     = id
-        self.fields = { **kwargs }
